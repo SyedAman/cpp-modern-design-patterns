@@ -2,11 +2,14 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <sstream>
 
 struct Journal
 {
     std::string title;
     std::vector<std::string> entries;
+
+    Journal() = default;
 
     Journal(const std::string& title) : title(title) {}
 
@@ -25,6 +28,24 @@ struct Journal
         }
         return os;
     }
+
+    friend std::istream& operator>>(std::istream& is, Journal& journal)
+    {
+        std::string title;
+        is >> title;
+        // Get the part after the colon in the first line.
+        title = title.substr(title.find(':') + 1);
+        // Ignore the newline character after the colon.
+        // title.pop_back();
+        journal.title = title;
+
+        std::string line;
+        while (std::getline(is, line))
+        {
+            journal.entries.push_back(line);
+        }
+        return is;
+    }
 };
 
 struct PersistenceManager
@@ -33,6 +54,12 @@ struct PersistenceManager
     {
         std::ofstream ofs(filename);
         ofs << journal;
+    }
+
+    static void load(Journal& journal, const std::string& filename)
+    {
+        std::ifstream ifs(filename);
+        ifs >> journal;
     }
 };
 
@@ -44,6 +71,10 @@ int main()
     std::cout << journal << std::endl;
 
     PersistenceManager::save(journal, "diary.txt");
+
+    Journal journal2;
+    PersistenceManager::load(journal2, "diary.txt");
+    std::cout << journal2 << std::endl;
 
     return 0;
 }
