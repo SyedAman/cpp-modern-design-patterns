@@ -2,6 +2,9 @@
 #include <vector>
 #include <iostream>
 
+template <typename T> struct Criteria;
+// template <typename T> struct AndCriteria : public Criteria<T>;
+
 enum class Color { red, green, blue };
 enum class Size { small, medium, large };
 
@@ -44,9 +47,29 @@ struct ProductFilter
     }
 };
 
+template <typename T> struct AndCriteria : public Criteria<T>
+{
+    const Criteria<T>& left;
+    const Criteria<T>& right;
+
+    AndCriteria(const Criteria<T>& left, const Criteria<T>& right)
+        : left(left), right(right)
+    {}
+
+    bool is_satisfied(const T& product) const override
+    {
+        return left.is_satisfied(product) && right.is_satisfied(product);
+    }
+};
+
 template <typename T> struct Criteria
 {
     virtual bool is_satisfied(const T&) const = 0;
+
+    AndCriteria<T> operator && (const Criteria& other) const
+    {
+        return AndCriteria<T>(*this, other);
+    } 
 };
 
 template <typename T> struct Filter
@@ -81,6 +104,14 @@ struct ProductSizeCriteria : Criteria<Product>
     }
 };
 
+struct BetterProductFilter : Filter<Product>
+{
+    std::vector<Product*> by_criteria(const std::vector<Product*> items, Criteria<Product>& criteria) const override
+    {
+        return Filter<Product>::by_criteria(items, criteria);
+    }
+};
+
 int main()
 {
     Product bread{"Bread", Color::red, Size::small};
@@ -92,22 +123,39 @@ int main()
     Product cherry{"Cherries", Color::red, Size::large};
     std::vector<Product*> products{&bread, &milk, &water, &coffee, &tea, &juice, &cherry};
 
-    // auto green_products = ProductFilter::by_color(products, Color::green);
-    // for (auto& p : green_products)
-    //     std::cout << p->name << std::endl;
+    std::cout << "Filtering without OCP..." << std::endl;
+    std::vector<Product*> green_products = ProductFilter::by_color(products, Color::green);
+    for (Product* p : green_products)
+        std::cout << p->name << " is green." << std::endl;
 
-    // auto large_products = ProductFilter::by_size(products, Size::large);
-    // for (auto& p : large_products)
-    //     std::cout << p->name << std::endl;
+    std::vector<Product*> large_products = ProductFilter::by_size(products, Size::large);
+    for (Product* p : large_products)
+        std::cout << p->name << " is large." << std::endl;
 
-    // auto green_large_products = ProductFilter::by_size_and_color(products, Size::small, Color::green);
-    // for (auto& p : green_large_products)
-    //     std::cout << p->name << std::endl;
+    std::vector<Product*> green_large_products = ProductFilter::by_size_and_color(products, Size::small, Color::green);
+    for (Product* p : green_large_products)
+        std::cout << p->name << " is green and large." << std::endl;
 
+    std::cout << std::endl;
+    std::cout << "--------------------------------------------------------------------------------" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Filtering with OCP..." << std::endl;
+    BetterProductFilter bf;
     ProductColorCriteria productColorCriteria = ProductColorCriteria(Color::green);
-    auto green_products = Filter<Product>().by_criteria(products, productColorCriteria);
-    for (auto& p : green_products)
-        std::cout << p->name << std::endl;
+    green_products = bf.by_criteria(products, productColorCriteria);
+    for (Product* p : green_products)
+        std::cout << p->name << " is green." << std::endl;
+
+    ProductSizeCriteria productSizeCriteria = ProductSizeCriteria(Size::large);
+    large_products = bf.by_criteria(products, productSizeCriteria);
+    for (Product* p : large_products)
+        std::cout << p->name << " is large." << std::endl;
+    
+    AndCriteria<Product> productSizeAndColorCriteria = ProductSizeCriteria(Size::small) && ProductColorCriteria(Color::green);
+    green_large_products = bf.by_criteria(products, productSizeAndColorCriteria);
+    for (Product* p : green_large_products)
+        std::cout << p->name << " is green and large." << std::endl;
 
     return 0;
 }
