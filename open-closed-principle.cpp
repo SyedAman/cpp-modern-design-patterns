@@ -62,14 +62,34 @@ template <typename T> struct AndCriteria : public Criteria<T>
     }
 };
 
+template <typename T> struct OrCriteria : public Criteria<T>
+{
+    const Criteria<T>& left;
+    const Criteria<T>& right;
+
+    OrCriteria(const Criteria<T>& left, const Criteria<T>& right)
+        : left(left), right(right)
+    {}
+
+    bool is_satisfied(const T& product) const override
+    {
+        return left.is_satisfied(product) || right.is_satisfied(product);
+    }
+};
+
 template <typename T> struct Criteria
 {
     virtual bool is_satisfied(const T&) const = 0;
 
-    AndCriteria<T> operator && (const Criteria& other) const
+    AndCriteria<T> operator&&(const Criteria& other) const
     {
         return AndCriteria<T>(*this, other);
-    } 
+    }
+
+    OrCriteria<T> operator||(const Criteria& other) const
+    {
+        return OrCriteria<T>(*this, other);
+    }
 };
 
 template <typename T> struct Filter
@@ -109,6 +129,21 @@ struct BetterProductFilter : Filter<Product>
     std::vector<Product*> by_criteria(const std::vector<Product*> items, Criteria<Product>& criteria) const override
     {
         return Filter<Product>::by_criteria(items, criteria);
+    }
+};
+
+struct Meat : Product
+{
+    float weight;
+};
+
+struct MeatWeightCriteria : Criteria<Meat>
+{
+    float weight;
+    MeatWeightCriteria(float weight) : weight(weight) {}
+    bool is_satisfied(const Meat& meat) const override
+    {
+        return abs(meat.weight - weight) < 1;
     }
 };
 
@@ -156,6 +191,20 @@ int main()
     green_large_products = bf.by_criteria(products, productSizeAndColorCriteria);
     for (Product* p : green_large_products)
         std::cout << p->name << " is green and large." << std::endl;
+
+    Meat chicken{"Chicken", Color::red, Size::small, 10};
+    Meat beef{"Beef", Color::red, Size::medium, 20};
+    Meat lamb{"Lamb", Color::red, Size::large, 30};
+    products.push_back(&chicken);
+
+    OrCriteria<Product> productSizeOrColorCriteria = ProductColorCriteria(Color::red) || (ProductSizeCriteria(Size::large) && ProductColorCriteria(Color::blue));
+    std::vector<Product*> red_or_large_and_blue = bf.by_criteria(products, productSizeOrColorCriteria);
+    for (Product* p : red_or_large_and_blue)
+        std::cout << p->name << " is red or large and blue" << std::endl;
+
+    //@TODO: Figure out how to filter through a mix of products and derived products.
+    // OrCriteria<Meat> productWeightOrSizeCriteria = MeatWeightCriteria(20) || MeatWeightCriteria(15);
+    // std::vector<Meat*> meats = bf.by_criteria(products, productWeightOrSizeCriteria);
 
     return 0;
 }
