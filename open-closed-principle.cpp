@@ -2,8 +2,8 @@
 #include <vector>
 #include <iostream>
 
-template <typename T> struct Criteria;
-// template <typename T> struct AndCriteria : public Criteria<T>;
+template <typename T> struct Specification;
+// template <typename T> struct AndSpecification : public Specification<T>;
 
 enum class Color { red, green, blue };
 enum class Size { small, medium, large };
@@ -47,12 +47,12 @@ struct ProductFilter
     }
 };
 
-template <typename T> struct AndCriteria : public Criteria<T>
+template <typename T> struct AndSpecification : public Specification<T>
 {
-    const Criteria<T>& left;
-    const Criteria<T>& right;
+    const Specification<T>& left;
+    const Specification<T>& right;
 
-    AndCriteria(const Criteria<T>& left, const Criteria<T>& right)
+    AndSpecification(const Specification<T>& left, const Specification<T>& right)
         : left(left), right(right)
     {}
 
@@ -62,12 +62,12 @@ template <typename T> struct AndCriteria : public Criteria<T>
     }
 };
 
-template <typename T> struct OrCriteria : public Criteria<T>
+template <typename T> struct OrSpecification : public Specification<T>
 {
-    const Criteria<T>& left;
-    const Criteria<T>& right;
+    const Specification<T>& left;
+    const Specification<T>& right;
 
-    OrCriteria(const Criteria<T>& left, const Criteria<T>& right)
+    OrSpecification(const Specification<T>& left, const Specification<T>& right)
         : left(left), right(right)
     {}
 
@@ -77,47 +77,47 @@ template <typename T> struct OrCriteria : public Criteria<T>
     }
 };
 
-template <typename T> struct Criteria
+template <typename T> struct Specification
 {
     virtual bool is_satisfied(const T&) const = 0;
 
-    AndCriteria<T> operator&&(const Criteria& other) const
+    AndSpecification<T> operator&&(const Specification& other) const
     {
-        return AndCriteria<T>(*this, other);
+        return AndSpecification<T>(*this, other);
     }
 
-    OrCriteria<T> operator||(const Criteria& other) const
+    OrSpecification<T> operator||(const Specification& other) const
     {
-        return OrCriteria<T>(*this, other);
+        return OrSpecification<T>(*this, other);
     }
 };
 
 template <typename T> struct Filter
 {
-    virtual std::vector<T*> by_criteria(const std::vector<T*> items, Criteria<T>& criteria) const
+    virtual std::vector<T*> by_specification(const std::vector<T*> items, Specification<T>& specification) const
     {
         std::vector<T*> result;
         for (auto& item : items)
-            if (criteria.is_satisfied(*item))
+            if (specification.is_satisfied(*item))
                 result.push_back(item);
         return result;
     }
 };
 
-struct ProductColorCriteria : Criteria<Product>
+struct ProductColorSpecification : Specification<Product>
 {
     Color color;
-    ProductColorCriteria(Color color) : color(color) {}
+    ProductColorSpecification(Color color) : color(color) {}
     bool is_satisfied(const Product& product) const override
     {
         return product.color == color;
     }
 };
 
-struct ProductSizeCriteria : Criteria<Product>
+struct ProductSizeSpecification : Specification<Product>
 {
     Size size;
-    ProductSizeCriteria(Size size) : size(size) {}
+    ProductSizeSpecification(Size size) : size(size) {}
     bool is_satisfied(const Product& product) const override
     {
         return product.size == size;
@@ -126,9 +126,9 @@ struct ProductSizeCriteria : Criteria<Product>
 
 struct BetterProductFilter : Filter<Product>
 {
-    std::vector<Product*> by_criteria(const std::vector<Product*> items, Criteria<Product>& criteria) const override
+    std::vector<Product*> by_specification(const std::vector<Product*> items, Specification<Product>& specification) const override
     {
-        return Filter<Product>::by_criteria(items, criteria);
+        return Filter<Product>::by_specification(items, specification);
     }
 };
 
@@ -137,10 +137,10 @@ struct Meat : Product
     float weight;
 };
 
-struct MeatWeightCriteria : Criteria<Meat>
+struct MeatWeightSpecification : Specification<Meat>
 {
     float weight;
-    MeatWeightCriteria(float weight) : weight(weight) {}
+    MeatWeightSpecification(float weight) : weight(weight) {}
     bool is_satisfied(const Meat& meat) const override
     {
         return abs(meat.weight - weight) < 1;
@@ -177,18 +177,18 @@ int main()
 
     std::cout << "Filtering with OCP..." << std::endl;
     BetterProductFilter bf;
-    ProductColorCriteria productColorCriteria = ProductColorCriteria(Color::green);
-    green_products = bf.by_criteria(products, productColorCriteria);
+    ProductColorSpecification productColorSpecification = ProductColorSpecification(Color::green);
+    green_products = bf.by_specification(products, productColorSpecification);
     for (Product* p : green_products)
         std::cout << p->name << " is green." << std::endl;
 
-    ProductSizeCriteria productSizeCriteria = ProductSizeCriteria(Size::large);
-    large_products = bf.by_criteria(products, productSizeCriteria);
+    ProductSizeSpecification productSizeSpecification = ProductSizeSpecification(Size::large);
+    large_products = bf.by_specification(products, productSizeSpecification);
     for (Product* p : large_products)
         std::cout << p->name << " is large." << std::endl;
     
-    AndCriteria<Product> productSizeAndColorCriteria = ProductSizeCriteria(Size::small) && ProductColorCriteria(Color::green);
-    green_large_products = bf.by_criteria(products, productSizeAndColorCriteria);
+    AndSpecification<Product> productSizeAndColorSpecification = ProductSizeSpecification(Size::small) && ProductColorSpecification(Color::green);
+    green_large_products = bf.by_specification(products, productSizeAndColorSpecification);
     for (Product* p : green_large_products)
         std::cout << p->name << " is green and large." << std::endl;
 
@@ -197,14 +197,14 @@ int main()
     Meat lamb{"Lamb", Color::red, Size::large, 30};
     products.push_back(&chicken);
 
-    OrCriteria<Product> productSizeOrColorCriteria = ProductColorCriteria(Color::red) || (ProductSizeCriteria(Size::large) && ProductColorCriteria(Color::blue));
-    std::vector<Product*> red_or_large_and_blue = bf.by_criteria(products, productSizeOrColorCriteria);
+    OrSpecification<Product> productSizeOrColorSpecification = ProductColorSpecification(Color::red) || (ProductSizeSpecification(Size::large) && ProductColorSpecification(Color::blue));
+    std::vector<Product*> red_or_large_and_blue = bf.by_specification(products, productSizeOrColorSpecification);
     for (Product* p : red_or_large_and_blue)
         std::cout << p->name << " is red or large and blue" << std::endl;
 
     //@TODO: Figure out how to filter through a mix of products and derived products.
-    // OrCriteria<Meat> productWeightOrSizeCriteria = MeatWeightCriteria(20) || MeatWeightCriteria(15);
-    // std::vector<Meat*> meats = bf.by_criteria(products, productWeightOrSizeCriteria);
+    // OrSpecification<Meat> productWeightOrSizeSpecification = MeatWeightSpecification(20) || MeatWeightSpecification(15);
+    // std::vector<Meat*> meats = bf.by_specification(products, productWeightOrSizeSpecification);
 
     return 0;
 }
