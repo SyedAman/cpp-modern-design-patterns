@@ -4,14 +4,14 @@
 #include <fstream>
 #include <sstream>
 
-struct BadJournal
+struct Journal
 {
     std::string title;
     std::vector<std::string> entries;
 
-    BadJournal() = default;
+    Journal() = default;
 
-    BadJournal(const std::string& title) : title(title) {}
+    Journal(const std::string& title) : title(title) {}
 
     void add_entry(const std::string& entry)
     {
@@ -19,7 +19,7 @@ struct BadJournal
         entries.push_back(std::to_string(count++) + ": " + entry);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const BadJournal& journal)
+    friend std::ostream& operator<<(std::ostream& os, const Journal& journal)
     {
         os << "Title: " << journal.title << "\n";
         for (const std::string& entry : journal.entries)
@@ -29,7 +29,7 @@ struct BadJournal
         return os;
     }
 
-    friend std::istream& operator>>(std::istream& is, BadJournal& journal)
+    friend std::istream& operator>>(std::istream& is, Journal& journal)
     {
         std::string title;
         is >> title;
@@ -87,13 +87,10 @@ struct BetterJournal
 
     friend std::istream& operator>>(std::istream& is, BetterJournal& journal)
     {
+        // Get the part after the colon in the first line as title.
         std::string title;
         is >> title;
-        // Get the part after the colon in the first line.
-        title = title.substr(title.find(':') + 1);
-        // Ignore the newline character after the colon.
-        // title.pop_back();
-        journal.title = title;
+        journal.title = title.substr(title.find(':') + 1);
 
         std::string line;
         while (std::getline(is, line))
