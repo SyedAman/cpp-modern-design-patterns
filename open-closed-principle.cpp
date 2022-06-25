@@ -3,7 +3,6 @@
 #include <iostream>
 
 template <typename T> struct Specification;
-// template <typename T> struct AndSpecification : public Specification<T>;
 
 enum class Color { red, green, blue };
 enum class Size { small, medium, large };
